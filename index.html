@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Label Maker – BMDP 34</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#0f1117; --surface:#1a1d27; --card:#21263a;
+  --accent:#00d4ff; --accent2:#7c3aed; --accent3:#10b981;
+  --text:#e8eaf6; --muted:#8892b0; --border:#2d3354;
+}
+body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* HEADER */
+header {
+  background:linear-gradient(135deg,#0f1117 0%,#1a1d27 50%,#0a0e1a 100%);
+  border-bottom:1px solid var(--border);
+  padding:16px 32px; display:flex; align-items:center; gap:16px;
+  position:sticky; top:0; z-index:100;
+}
+.logo-icon {
+  width:40px;height:40px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:#fff;font-family:'IBM Plex Mono',monospace;flex-shrink:0;
+}
+.header-title h1 {
+  font-size:17px;font-weight:700;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;
+}
+.header-title span { font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:1px; }
+.header-badge {
+  margin-left:auto;background:rgba(0,212,255,0.1);
+  border:1px solid var(--accent);color:var(--accent);
+  padding:4px 12px;border-radius:20px;font-size:11px;font-family:'IBM Plex Mono',monospace;
+}
+
+main { max-width:1100px;margin:0 auto;padding:28px 24px; }
+
+/* FORMAT GUIDE */
+.format-guide {
+  background:rgba(0,212,255,0.05);
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:12px;padding:16px 20px;margin-bottom:24px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+}
+.guide-title { font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;white-space:nowrap; }
+.guide-cols { display:flex;gap:10px;flex-wrap:wrap; }
+.col-badge {
+  display:flex;align-items:center;gap:7px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:6px 12px;
+}
+.col-letter {
+  width:22px;height:22px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;
+  flex-shrink:0;
+}
+.col-letter.a { background:rgba(0,212,255,0.15);color:var(--accent); }
+.col-letter.b { background:rgba(124,58,237,0.15);color:#a78bfa; }
+.col-letter.c { background:rgba(16,185,129,0.15);color:var(--accent3); }
+.col-desc { font-size:12px;color:var(--text);font-weight:600; }
+.col-sub  { font-size:10px;color:var(--muted);margin-top:1px; }
+
+/* UPLOAD */
+.upload-section { background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:24px; }
+.section-title {
+  font-size:12px;font-weight:600;letter-spacing:2px;color:var(--accent);text-transform:uppercase;
+  font-family:'IBM Plex Mono',monospace;margin-bottom:16px;display:flex;align-items:center;gap:8px;
+}
+.section-title::before { content:'';display:block;width:3px;height:14px;background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:2px; }
+
+.upload-area {
+  border:2px dashed var(--border);border-radius:12px;
+  padding:36px 24px;text-align:center;cursor:pointer;transition:all .3s;position:relative;
+}
+.upload-area:hover,.upload-area.dragover { border-color:var(--accent);background:rgba(0,212,255,0.04); }
+.upload-area.has-file { border-color:var(--accent3);background:rgba(16,185,129,0.04); }
+.upload-icon { font-size:40px;margin-bottom:10px; }
+.upload-text-main { font-size:15px;font-weight:600;color:var(--text);margin-bottom:5px; }
+.upload-text-sub { font-size:13px;color:var(--muted); }
+.upload-text-sub strong { color:var(--accent); }
+input[type="file"] { display:none; }
+
+.file-info {
+  display:none;margin-top:14px;
+  background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);
+  border-radius:8px;padding:10px 16px;
+  display:flex;align-items:center;gap:10px;
+}
+.file-info .fi-icon { font-size:20px;flex-shrink:0; }
+.file-info .fi-name { font-size:13px;font-weight:600;color:var(--accent3); }
+.file-info .fi-meta { font-size:11px;color:var(--muted);margin-top:2px; }
+
+/* STATS */
+.stats-bar { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px; }
+.stat-card { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;flex:1;min-width:110px; }
+.stat-label { font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px; }
+.stat-value { font-size:21px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--accent); }
+.stat-value.green  { color:var(--accent3); }
+.stat-value.orange { color:#fb923c; }
+.stat-value.purple { color:#a78bfa; }
+
+/* BUTTONS */
+.action-bar { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px; }
+.btn {
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;
+  cursor:pointer;border:none;transition:all .25s;font-family:'IBM Plex Sans',sans-serif;
+}
+.btn-primary { background:linear-gradient(135deg,var(--accent),#0099cc);color:#0a0e1a; }
+.btn-primary:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,212,255,.3); }
+.btn-secondary { background:var(--surface);border:1px solid var(--border);color:var(--text); }
+.btn-secondary:hover { border-color:var(--accent);color:var(--accent); }
+.btn-danger { background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171; }
+.btn-danger:hover { background:rgba(239,68,68,.2); }
+.btn:disabled { opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important; }
+
+/* PREVIEW */
+.preview-section { background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px; }
+.preview-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px; }
+.preview-grid {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));
+  gap:14px;max-height:700px;overflow-y:auto;padding-right:4px;
+}
+.preview-grid::-webkit-scrollbar { width:5px; }
+.preview-grid::-webkit-scrollbar-track { background:var(--bg);border-radius:3px; }
+.preview-grid::-webkit-scrollbar-thumb { background:var(--border);border-radius:3px; }
+
+/* LABEL WRAPPER */
+.label-wrapper {
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:10px 10px 18px;position:relative;
+}
+.label-num { position:absolute;top:5px;right:8px;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace; }
+
+/* ═══════════════════════════════════════════════════
+   THE LABEL  —  11cm × 5.5cm
+   96 dpi: 11cm=415.7≈416px, 5.5cm=207.9≈208px
+   ═══════════════════════════════════════════════════ */
+.label {
+  width: 416px;
+  height: 208px;
+  background: #ffffff;
+  border: 1.5px solid #111;
+  display: grid;
+  grid-template-columns: 272px 1fr;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+}
+
+/* LEFT: 4 rows — 3 small + 1 tall qty */
+.label-left {
+  display: grid;
+  grid-template-rows: 38px 38px 38px 1fr;
+  border-right: 1.5px solid #111;
+  overflow: hidden;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  overflow: hidden;
+  border-bottom: 1px solid #aaa;
+}
+.field-row.qty-row {
+  align-items: flex-start;
+  padding: 8px 8px 0;
+  border-bottom: none;
+}
+
+.f-name  { font-size:11px;font-weight:bold;color:#111;white-space:nowrap;flex-shrink:0;width:95px; }
+.f-colon { font-size:11px;font-weight:bold;color:#111;flex-shrink:0;margin-right:5px; }
+.f-vbox  { flex:1;overflow:hidden;display:flex;align-items:center;height:100%; }
+.f-val   { display:block;color:#111;line-height:1.3;word-break:break-word;max-width:100%; }
+
+/* UON value — highlight slightly */
+.uon-val { color:#111;font-weight:600; }
+
+/* Qty row — large label, empty value space */
+.qty-row .f-name  { font-size:12px;margin-top:2px; }
+.qty-row .f-colon { font-size:12px;margin-top:2px; }
+
+/* RIGHT */
+.label-right {
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;padding:5px 3px 4px;gap:2px;
+}
+.barcode-title { font-family:Arial,sans-serif;font-size:9px;font-weight:bold;color:#111;text-align:center;letter-spacing:.4px; }
+.qr-box { width:120px;height:120px;display:flex;align-items:center;justify-content:center; }
+.qr-box canvas,.qr-box img { width:120px!important;height:120px!important;display:block; }
+.mat-under { font-family:'Courier New',monospace;font-size:6.5px;color:#444;text-align:center;word-break:break-all;max-width:130px;line-height:1.2; }
+
+/* EMPTY STATE */
+.empty-state { text-align:center;padding:60px 24px;color:var(--muted); }
+.empty-state .es-icon { font-size:52px;margin-bottom:14px;opacity:.4; }
+.empty-state p { font-size:14px;line-height:1.8; }
+
+/* PROGRESS */
+.prog-wrap { background:var(--bg);border-radius:4px;height:4px;overflow:hidden;margin-top:10px; }
+.prog-bar  { height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .3s;width:0%; }
+
+/* TOAST */
+#toast {
+  position:fixed;bottom:24px;right:24px;
+  background:var(--card);border:1px solid var(--accent3);color:var(--accent3);
+  padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;
+  transform:translateY(80px);opacity:0;transition:all .35s;z-index:999;max-width:320px;
+}
+#toast.show { transform:translateY(0);opacity:1; }
+#toast.error { border-color:#f87171;color:#f87171; }
+#toast.warn  { border-color:#fb923c;color:#fb923c; }
+
+/* OVERLAY */
+#overlay {
+  display:none;position:fixed;inset:0;
+  background:rgba(15,17,23,.88);backdrop-filter:blur(4px);
+  z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+}
+#overlay.show { display:flex; }
+.spinner { width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.overlay-text { font-size:13px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-align:center; }
+
+/* UON missing warning badge */
+.warn-badge {
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(251,146,60,0.12);border:1px solid rgba(251,146,60,0.35);
+  color:#fb923c;font-size:11px;padding:4px 10px;border-radius:6px;
+  font-family:'IBM Plex Mono',monospace;margin-top:8px;
+}
+
+.watermark { text-align:center;margin-top:28px;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">B</div>
+  <div class="header-title">
+    <h1>Label Maker Pro</h1>
+    <span>BMDP 34 · Material Label Generator</span>
+  </div>
+  <div class="header-badge">v5.1</div>
+</header>
+
+<main>
+
+  <!-- FORMAT GUIDE -->
+  <div class="format-guide">
+    <div class="guide-title">Format Excel</div>
+    <div class="guide-cols">
+      <div class="col-badge">
+        <div class="col-letter a">A</div>
+        <div><div class="col-desc">Nomor Material</div><div class="col-sub">Wajib diisi</div></div>
+      </div>
+      <div class="col-badge">
+        <div class="col-letter b">B</div>
+        <div><div class="col-desc">Deskripsi</div><div class="col-sub">Wajib diisi</div></div>
+      </div>
+      <div class="col-badge">
+        <div class="col-letter c">C</div>
+        <div><div class="col-desc">UON</div><div class="col-sub">Otomatis terbaca</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-section">
+    <div class="section-title">Upload File Excel</div>
+    <div class="upload-area" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <div class="upload-icon" id="uploadIcon">📂</div>
+      <div class="upload-text-main" id="uploadTextMain">Drag & Drop file Excel di sini</div>
+      <div class="upload-text-sub" id="uploadTextSub">atau <strong>klik untuk browse</strong> · .xlsx · .xls · .csv</div>
+    </div>
+    <div id="fileInfo" style="display:none" class="file-info">
+      <div class="fi-icon">✅</div>
+      <div>
+        <div class="fi-name" id="fiName">-</div>
+        <div class="fi-meta" id="fiMeta">-</div>
+      </div>
+    </div>
+    <div id="uonWarn" style="display:none">
+      <div class="warn-badge">⚠️ Beberapa baris tidak memiliki UON di Kolom C — akan tampil "-"</div>
+    </div>
+    <div class="prog-wrap" id="progWrap" style="display:none"><div class="prog-bar" id="progBar"></div></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat-card"><div class="stat-label">Total Label</div><div class="stat-value" id="stTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Dengan UON</div><div class="stat-value green" id="stUon">0</div></div>
+    <div class="stat-card"><div class="stat-label">Halaman PDF</div><div class="stat-value purple" id="stPages">0</div></div>
+    <div class="stat-card"><div class="stat-label">Susunan</div><div class="stat-value green">2 × 4</div></div>
+    <div class="stat-card"><div class="stat-label">Per Halaman</div><div class="stat-value green">8</div></div>
+    <div class="stat-card"><div class="stat-label">Ukuran</div><div class="stat-value orange" style="font-size:14px;margin-top:4px;">11×5.5 cm</div></div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="action-bar" id="actionBar" style="display:none">
+    <button class="btn btn-primary" id="btnPDF" onclick="generatePDF()">⬇ Download PDF</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">📂 Ganti File</button>
+    <button class="btn btn-danger" onclick="clearAll()">🗑 Hapus Semua</button>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-section">
+    <div class="preview-header">
+      <div class="section-title">Preview Label</div>
+      <span style="font-size:11px;color:var(--muted)" id="previewCount"></span>
+    </div>
+    <div class="empty-state" id="emptyState">
+      <div class="es-icon">🏷️</div>
+      <p>
+        Belum ada data. Upload file Excel untuk memulai.<br>
+        <span style="font-size:12px;color:var(--muted)">
+          Kolom A = Nomor Material &nbsp;·&nbsp; Kolom B = Deskripsi &nbsp;·&nbsp; Kolom C = UON
+        </span>
+      </p>
+    </div>
+    <div class="preview-grid" id="previewGrid" style="display:none"></div>
+  </div>
+
+  <div class="watermark">© BMDP 34 · Label Maker Pro · v5.1</div>
+</main>
+
+<div id="overlay"><div class="spinner"></div><div class="overlay-text" id="overlayText">Memproses...</div></div>
+<div id="toast"></div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────
+let allItems = [];   // { materialNo, description, uon }
+
+// PDF dimensions (mm)
+const PDF_COLS = 2,  PDF_ROWS = 4,  PER_PAGE = 8;
+const LBL_W = 99,   LBL_H = 49.5;         // scaled to fit 2 cols in A4 210mm
+const GAP_X = 6,    GAP_Y = 4;
+const MARGIN_X = (210 - PDF_COLS*LBL_W - (PDF_COLS-1)*GAP_X) / 2;  // ≈3mm
+const MARGIN_Y = (297 - PDF_ROWS*LBL_H - (PDF_ROWS-1)*GAP_Y) / 2;  // ≈44.5mm
+
+// Canvas for text measurement
+const _mc = document.createElement('canvas');
+const _ctx = _mc.getContext('2d');
+
+// ─── FILE INPUT ──────────────────────────────
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+// ─── HANDLE FILE ─────────────────────────────
+function handleFile(file) {
+  if (!/\.(xlsx|xls|csv)$/i.test(file.name)) return showToast('❌ Format tidak valid! Gunakan .xlsx, .xls, atau .csv', true);
+
+  showOverlay('Membaca file Excel...');
+  const reader = new FileReader();
+
+  reader.onload = async e => {
+    try {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+      allItems = [];
+      let uonMissing = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row   = rows[i];
+        // Kolom A = index 0, Kolom B = index 1, Kolom C = index 2
+        const matNo = String(row[0] ?? '').trim();
+        const desc  = String(row[1] ?? '').trim();
+        const uon   = String(row[2] ?? '').trim();
+
+        // Skip baris kosong
+        if (!matNo && !desc) continue;
+
+        // Skip baris header (baris pertama yang berisi teks label kolom)
+        if (i === 0) {
+          const isHeader = /nomor|material|deskripsi|description|kode|uom|uon|satuan/i.test(matNo + desc + uon);
+          if (isHeader) continue;
+        }
+
+        if (!uon) uonMissing++;
+
+        allItems.push({
+          materialNo : matNo,
+          description: desc,
+          uon        : uon || '-'
+        });
+      }
+
+      if (!allItems.length) {
+        hideOverlay();
+        return showToast('⚠️ Tidak ada data valid ditemukan!', 'warn');
+      }
+
+      // Show file info
+      showFileInfo(file.name, allItems.length, uonMissing);
+
+      hideOverlay();
+      await renderPreview();
+      updateStats(uonMissing);
+      showUI();
+      showToast(`✅ ${allItems.length} label berhasil dimuat!`);
+
+    } catch(err) {
+      hideOverlay();
+      console.error(err);
+      showToast('❌ Gagal membaca file: ' + err.message, true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showFileInfo(name, total, uonMissing) {
+  document.getElementById('fileInfo').style.display = 'flex';
+  document.getElementById('fiName').textContent = name;
+  document.getElementById('fiMeta').textContent =
+    `${total} baris data · UON terisi: ${total - uonMissing} · Kosong: ${uonMissing}`;
+  document.getElementById('uonWarn').style.display = uonMissing > 0 ? 'block' : 'none';
+  dropZone.classList.add('has-file');
+}
+
+// ─── QR CODE ────────────────────────────────
+function makeQR(text, size) {
+  return new Promise(resolve => {
+    const div = document.createElement('div');
+    div.style.cssText = `position:fixed;left:-9999px;top:0;width:${size}px;height:${size}px;`;
+    document.body.appendChild(div);
+    try {
+      new QRCode(div, {
+        text: text || 'BMDP34',
+        width: size, height: size,
+        colorDark:'#000000', colorLight:'#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch(e) {}
+    setTimeout(() => {
+      const el = div.querySelector('canvas') || div.querySelector('img');
+      document.body.removeChild(div);
+      resolve(el);
+    }, 200);
+  });
+}
+
+// ─── AUTO-FIT FONT SIZE ──────────────────────
+function autoFitPx(text, maxW, maxH, face, start, min) {
+  let sz = start;
+  while (sz >= min) {
+    _ctx.font = `${sz}px ${face}`;
+    if (_ctx.measureText(text).width <= maxW && sz * 1.35 <= maxH) return sz;
+    const words = text.split(/\s+/);
+    let lW = 0, lines = 1;
+    for (const w of words) {
+      const ww = _ctx.measureText(w + ' ').width;
+      if (lW + ww > maxW) { lines++; lW = ww; } else lW += ww;
+    }
+    if (lines * sz * 1.35 <= maxH) return sz;
+    sz -= 0.5;
+  }
+  return min;
+}
+
+// ─── BUILD LABEL (DOM) ───────────────────────
+async function buildLabel(item, idx) {
+  // Wrapper
+  const wrap = document.createElement('div');
+  wrap.className = 'label-wrapper';
+  const badge = document.createElement('div');
+  badge.className = 'label-num';
+  badge.textContent = `#${idx + 1}`;
+  wrap.appendChild(badge);
+
+  const label = document.createElement('div');
+  label.className = 'label';
+
+  // ── LEFT SIDE ──
+  const left = document.createElement('div');
+  left.className = 'label-left';
+
+  // Helper: create one small field row
+  function makeRow(name, val, extraClass) {
+    const row = document.createElement('div'); row.className = 'field-row';
+    const nm  = document.createElement('span'); nm.className = 'f-name'; nm.textContent = name;
+    const cl  = document.createElement('span'); cl.className = 'f-colon'; cl.textContent = ':';
+    const vb  = document.createElement('div');  vb.className = 'f-vbox';
+    const vt  = document.createElement('span'); vt.className = `f-val${extraClass ? ' ' + extraClass : ''}`;
+    vt.textContent = val || '-';
+    vb.appendChild(vt); row.append(nm, cl, vb);
+    return { row, vt };
+  }
+
+  // Row 1: Deskripsi
+  const { row: r1, vt: v1 } = makeRow('Deskripsi', item.description);
+  // Row 2: Nomor Material
+  const { row: r2, vt: v2 } = makeRow('Nomor Material', item.materialNo);
+  // Row 3: Uon — value from Col C
+  const { row: r3, vt: v3 } = makeRow('Uon', item.uon, 'uon-val');
+
+  // Row 4: Qty — tall, empty for manual writing
+  const r4 = document.createElement('div'); r4.className = 'field-row qty-row';
+  const q1 = document.createElement('span'); q1.className = 'f-name'; q1.textContent = 'Qty';
+  const q2 = document.createElement('span'); q2.className = 'f-colon'; q2.textContent = ':';
+  const q3 = document.createElement('div');  q3.className = 'f-vbox';
+  // Empty — for pen writing
+  r4.append(q1, q2, q3);
+
+  left.append(r1, r2, r3, r4);
+
+  // ── RIGHT SIDE ──
+  const right = document.createElement('div');
+  right.className = 'label-right';
+
+  const bt = document.createElement('div'); bt.className = 'barcode-title'; bt.textContent = 'Barcode';
+  const qb = document.createElement('div'); qb.className = 'qr-box';
+  const mu = document.createElement('div'); mu.className = 'mat-under'; mu.textContent = item.materialNo || '';
+
+  right.append(bt, qb, mu);
+  label.append(left, right);
+  wrap.appendChild(label);
+
+  // Auto-fit font sizes
+  // Each small row height ≈ 38px, value box width ≈ 160px
+  const valW = 155, rowH = 34;
+  v1.style.fontSize = autoFitPx(item.description || '', valW, rowH, 'Arial', 11.5, 7) + 'px';
+  v2.style.fontSize = autoFitPx(item.materialNo  || '', valW, rowH, 'Arial', 11.5, 7) + 'px';
+  v3.style.fontSize = autoFitPx(item.uon         || '', valW, rowH, 'Arial', 11.5, 7) + 'px';
+
+  // Generate QR from Nomor Material
+  const qrEl = await makeQR(item.materialNo || item.description, 120);
+  if (qrEl) qb.appendChild(qrEl);
+
+  return wrap;
+}
+
+// ─── RENDER ALL PREVIEWS ─────────────────────
+async function renderPreview() {
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '';
+  showProg(0);
+  for (let i = 0; i < allItems.length; i++) {
+    grid.appendChild(await buildLabel(allItems[i], i));
+    showProg(((i + 1) / allItems.length) * 100);
+  }
+  hideProg();
+}
+
+// ─── GENERATE PDF ────────────────────────────
+async function generatePDF() {
+  if (!allItems.length) return;
+  showOverlay('Menyiapkan PDF...');
+  document.getElementById('btnPDF').disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const totalPages = Math.ceil(allItems.length / PER_PAGE);
+
+    for (let p = 0; p < totalPages; p++) {
+      if (p > 0) pdf.addPage();
+      showOverlay(`Rendering halaman ${p + 1} / ${totalPages}...`);
+      const pageItems = allItems.slice(p * PER_PAGE, (p + 1) * PER_PAGE);
+      for (let li = 0; li < pageItems.length; li++) {
+        const col = li % PDF_COLS;
+        const row = Math.floor(li / PDF_COLS);
+        const x   = MARGIN_X + col * (LBL_W + GAP_X);
+        const y   = MARGIN_Y + row * (LBL_H + GAP_Y);
+        await drawPdfLabel(pdf, pageItems[li], x, y, LBL_W, LBL_H);
+      }
+    }
+
+    const ts = new Date().toISOString().slice(0, 10);
+    pdf.save(`Label_BMDP34_${ts}.pdf`);
+    showToast('✅ PDF berhasil didownload!');
+
+  } catch(err) {
+    console.error(err);
+    showToast('❌ Gagal generate PDF: ' + err.message, true);
+  } finally {
+    hideOverlay();
+    document.getElementById('btnPDF').disabled = false;
+  }
+}
+
+// ─── DRAW ONE LABEL → jsPDF ──────────────────
+async function drawPdfLabel(pdf, item, x, y, w, h) {
+  const qrColW = 33;       // mm — right QR column
+  const leftW  = w - qrColW;
+
+  // Row heights: 3 small + 1 tall qty
+  // total = h, qty = 2× small → 5 units → small = h/5
+  const sH = h / 5;        // small row height mm ≈ 9.9mm
+  const qH = sH * 2;       // qty row height mm   ≈ 19.8mm
+
+  // ── Borders ──
+  pdf.setDrawColor(15, 15, 15);
+  pdf.setLineWidth(0.3);
+  pdf.rect(x, y, w, h, 'S');
+
+  // Vertical divider
+  pdf.line(x + leftW, y, x + leftW, y + h);
+
+  // Horizontal row dividers (left side only)
+  pdf.setLineWidth(0.2);
+  pdf.setDrawColor(100, 100, 100);
+  pdf.line(x, y + sH,     x + leftW, y + sH);      // after Deskripsi
+  pdf.line(x, y + sH*2,   x + leftW, y + sH*2);    // after Nomor Material
+  pdf.line(x, y + sH*3,   x + leftW, y + sH*3);    // after Uon
+  // No line after Qty (last row)
+
+  pdf.setDrawColor(15, 15, 15);
+  pdf.setLineWidth(0.3);
+
+  // Column config
+  const lPad   = 2;
+  const fnW    = 28;      // field name column mm
+  const colonW = 3.5;
+  const valX   = x + lPad + fnW + colonW;
+  const valMaxW = leftW - fnW - colonW - lPad - 1;
+
+  pdf.setTextColor(15, 15, 15);
+
+  // ── Draw small row ──
+  function drawRow(label, value, rowY, rowH) {
+    const midY = rowY + rowH / 2;
+    // Field name
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7);
+    pdf.text(label, x + lPad, midY + 1.3);
+    pdf.text(':', x + lPad + fnW, midY + 1.3);
+    // Value (auto-fit)
+    const fs = calcPdfFs(pdf, value || '-', valMaxW, rowH - 2.5, 8, 5.5);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(fs);
+    const lines = pdf.splitTextToSize(value || '-', valMaxW);
+    const maxL  = Math.floor((rowH - 2) / (fs * 0.353));
+    const show  = lines.slice(0, Math.max(1, maxL));
+    const th    = show.length * fs * 0.353;
+    const startY = rowY + (rowH - th) / 2 + fs * 0.28;
+    pdf.text(show, valX, startY);
+  }
+
+  // ── 3 small rows ──
+  drawRow('Deskripsi',      item.description, y,         sH);
+  drawRow('Nomor Material', item.materialNo,  y + sH,    sH);
+  drawRow('Uon',            item.uon,         y + sH*2,  sH);
+
+  // ── Qty row (tall, empty for manual) ──
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
+  pdf.text('Qty', x + lPad, y + sH*3 + qH/2 + 1.5);
+  pdf.text(':',   x + lPad + fnW, y + sH*3 + qH/2 + 1.5);
+  // value area intentionally left blank
+
+  // ── RIGHT: Barcode label ──
+  const qX = x + leftW;
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(6.5);
+  pdf.setTextColor(15, 15, 15);
+  pdf.text('Barcode', qX + qrColW / 2, y + 4, { align:'center' });
+
+  // QR image
+  const qrSz  = 26;
+  const qrImgX = qX + (qrColW - qrSz) / 2;
+  const qrImgY = y + 5;
+
+  const qrEl = await makeQR(item.materialNo || item.description || 'BMDP34', 220);
+  if (qrEl) {
+    const src = qrEl.tagName === 'CANVAS' ? qrEl.toDataURL('image/png') : qrEl.src;
+    if (src) pdf.addImage(src, 'PNG', qrImgX, qrImgY, qrSz, qrSz);
+  }
+
+  // Mat no below QR
+  pdf.setFont('courier', 'normal'); pdf.setFontSize(4.5); pdf.setTextColor(60, 60, 60);
+  const muLines = pdf.splitTextToSize(String(item.materialNo || ''), qrColW - 2);
+  pdf.text(muLines.slice(0, 2), qX + qrColW / 2, qrImgY + qrSz + 2, { align:'center' });
+  pdf.setTextColor(15, 15, 15);
+}
+
+// ─── CALC PDF FONT SIZE ──────────────────────
+function calcPdfFs(pdf, text, maxW, maxH, start, min) {
+  let sz = start;
+  while (sz >= min) {
+    pdf.setFontSize(sz);
+    const lines = pdf.splitTextToSize(text, maxW);
+    if (lines.length * sz * 0.353 <= maxH - 2) break;
+    sz -= 0.3;
+  }
+  return Math.max(sz, min);
+}
+
+// ─── UI HELPERS ──────────────────────────────
+function updateStats(uonMissing) {
+  const total = allItems.length;
+  document.getElementById('stTotal').textContent = total;
+  document.getElementById('stUon').textContent   = total - uonMissing;
+  document.getElementById('stPages').textContent = Math.ceil(total / PER_PAGE);
+  document.getElementById('previewCount').textContent = `${total} label · ${Math.ceil(total / PER_PAGE)} halaman PDF`;
+}
+
+function showUI() {
+  document.getElementById('statsBar').style.display = 'flex';
+  document.getElementById('actionBar').style.display = 'flex';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('previewGrid').style.display = 'grid';
+}
+
+function clearAll() {
+  allItems = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  document.getElementById('statsBar').style.display = 'none';
+  document.getElementById('actionBar').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('previewGrid').style.display = 'none';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('uonWarn').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('previewCount').textContent = '';
+  dropZone.classList.remove('has-file');
+  showToast('🗑 Data dihapus');
+}
+
+function showToast(msg, type = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type === true ? 'error' : type === 'warn' ? 'warn' : '';
+  void t.offsetWidth; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function showOverlay(txt) {
+  document.getElementById('overlayText').textContent = txt;
+  document.getElementById('overlay').classList.add('show');
+}
+function hideOverlay() { document.getElementById('overlay').classList.remove('show'); }
+function showProg(pct) {
+  document.getElementById('progWrap').style.display = 'block';
+  document.getElementById('progBar').style.width = pct + '%';
+}
+function hideProg() {
+  document.getElementById('progWrap').style.display = 'none';
+  document.getElementById('progBar').style.width = '0%';
+}
+</script>
+</body>
+</html>
